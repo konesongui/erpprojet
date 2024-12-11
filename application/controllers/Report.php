@@ -896,7 +896,10 @@ class Report extends Admin_Controller
     }
 
     public function expense()
-    {
+    {   
+        // var_dump($_POST['search_type']);
+        // exit;
+
         $this->session->set_userdata('top_menu', 'Reports');
         $this->session->set_userdata('sub_menu', 'Reports/finance');
         $this->session->set_userdata('subsub_menu', 'Reports/finance/expense');
@@ -909,13 +912,21 @@ class Report extends Admin_Controller
         if ($this->form_validation->run() == false) {
             $dates               = $this->customlib->get_betweendate('this_year');
             $data['search_type'] = '';
+            // var_dump($dates);
+            // exit;
         } else {
             $dates               = $this->customlib->get_betweendate($_POST['search_type']);
             $data['search_type'] = $_POST['search_type'];
+
+            // var_dump($dates);
+            // exit;
         }
 
         $start_date = date('Y-m-d', strtotime($dates['from_date']));
         $end_date   = date('Y-m-d', strtotime($dates['to_date']));
+
+        // var_dump($end_date);
+        // exit;
 
         $data['label'] = date($this->customlib->getSchoolDateFormat(), strtotime($start_date)) . " " . $this->lang->line('to') . " " . date($this->customlib->getSchoolDateFormat(), strtotime($end_date));
         $this->load->view('layout/header', $data);
@@ -2442,6 +2453,9 @@ class Report extends Admin_Controller
         $date_from   = $this->input->post('date_from');
         $date_to     = $this->input->post('date_to');
 
+        // var_dump($search_type);
+        // exit;
+
         if ($search_type == "") {
             $dates               = $this->customlib->get_betweendate('this_year');
             $data['search_type'] = '';
@@ -2450,13 +2464,24 @@ class Report extends Admin_Controller
             $data['search_type'] = $_POST['search_type'];
         }
 
+        // var_dump($dates);
+        // var_dump($data['search_type']);
+        // exit;
+
         $start_date = date('Y-m-d', strtotime($dates['from_date']));
         $end_date   = date('Y-m-d', strtotime($dates['to_date']));
 
         $data['label'] = date($this->customlib->getSchoolDateFormat(), strtotime($start_date)) . " " . $this->lang->line('to') . " " . date($this->customlib->getSchoolDateFormat(), strtotime($end_date));
-        $expenseList   = $this->expense_model->search($start_date, $end_date,"");
+        $expenseList   = $this->expense_model->search("", $start_date, $end_date);
+        $m             = json_decode($expenseList);
+        // $m   = $this->expense_model->search("", $start_date, $end_date);
+        // var_dump($start_date);
+        // var_dump($end_date);
+        // var_dump($data['label']);
+        // var_dump($m);
+        // exit;
 
-        $m               = json_decode($expenseList);
+        
         $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
         $dt_data         = array();
         $grand_total     = 0;
@@ -2469,9 +2494,11 @@ class Report extends Admin_Controller
                 $row[]     = $value->invoice_no;
                 $row[]     = $value->exp_category;
                 $row[]     = date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($value->date));
+                $row[]     = $value->income_name;
                 $row[]     = $currency_symbol . $value->amount;
                 $dt_data[] = $row;
             }
+            $footer_row[] = "";
             $footer_row[] = "";
             $footer_row[] = "";
             $footer_row[] = "";

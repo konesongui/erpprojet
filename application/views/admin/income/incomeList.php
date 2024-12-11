@@ -131,7 +131,7 @@ $language_name = $language["short_code"];
                 <!-- general form elements -->
                 <div class="box box-primary">
                     <div class="box-header ptbnull">
-                        <h3 class="box-title titlefix"> <?php echo $this->lang->line('income_list'); ?></h3>
+                        <h3 class="box-title titlefix"> <?php echo $this->lang->line('income_list'); ?>  <b> ==> CAISSE GENERALE : <?= number_format(floatval($incomeTotal->amount??0), 0, ',', ' ') ;?>  FCA </b></h3>
                         <div class="box-tools pull-right">
                         </div><!-- /.box-tools -->
                     </div><!-- /.box-header -->
@@ -166,42 +166,166 @@ $language_name = $language["short_code"];
                         </div><!-- /.mail-box-messages -->
                     </div><!-- /.box-body -->
                 </div>
+
+                <!-- increase form modal -->
+                <div id="increaseForm" class="modal fade" data-backdrop="false">
+                    <div class="modal-dialog">
+                        <div class="modal-content" id="increaseFormContent">
+
+                        </div>
+                    </div>
+                </div>
+
             </div><!--/.col (left) -->
             <!-- right column -->
 
         </div>
 
     </section><!-- /.content -->
-</div><!-- /.content-wrapper -->
-<script type="text/javascript">
-    $(document).ready(function () {
-        $(".incomeList").click(function (e) {
-            e.preventDefault(e);
-            // Get the record's ID via attribute
-            var iid = $(this).attr('data-id');
-            $('#form1').trigger("reset");
-            $('#incomemodel').modal('show');
-            $.ajax({
-                url: 'IncomeByID?id=' + iid,
-                method: 'GET',
-                data: '',
-                dataType: 'json',
-            }).done(function (response) {
-                console.log(response);
-                // Populate the form fields with the data returned from server
-                $('#form1').find('[name="id"]').val(response.incomeByid.id).end();
-                $('#form1').find('[name="inc_head_id"]').val(response.incomeByid.inc_head_id).end();
-                $('#form1').find('[name="name"]').val(response.incomeByid.name).end();
-                $('#form1').find('[name="note"]').val(response.incomeByid.note).end();
-                $('#form1').find('[name="date"]').val(response.incomeByid.date).end();
-                $('#form1').find('[name="amount"]').val(response.incomeByid.amount).end();
+</div><!--/.content-wrapper-->
 
-</script>
 <script>
     ( function ( $ ) {
-    'use strict';
-    $(document).ready(function () {
-        initDatatable('income-list','admin/income/getincomelist',[],[],100);
+        'use strict';
+        $(document).ready(function () {
+            initDatatable('income-list','admin/income/getincomelist',[],[],100);
+        });
+    } ( jQuery ) )
+
+
+    var base_url = '<?php echo base_url() ?>';
+    
+
+    /*   
+    ALL ACTIONS BUTTONS ABOUT PERMISSIONS DATATABLE
+    */
+    // Function to set a increase
+    function form_increase(id) {
+        
+
+        console
+
+        $.ajax({
+            'url'   : base_url + 'Income/form_increase', // controller link
+            'type'  : 'GET', // method used to send data
+            'data'  : {
+                'id'        : id, // row id
+            },
+            'success': function (data) { //probably this request will return anything, it'll be put in var "data"
+
+                // Get the html container where to display the loaded form
+                var increase_form_content = $('#increase_form_content'); //jquery selector (get element by id)
+
+                // Process only if any data has been loaded
+                if (data) {
+
+                    // Display the loaded data
+                    increase_form_content.html(data);
+
+                } // Fin si
+
+            } // End success event
+        });
+    } // End function
+
+
+    
+    // Function to load on (edit or add) button click
+    $(document).on('click', `.increaseAount`, function(e) {
+
+        // Desable default event
+        e.preventDefault();
+
+        // Get the selected row id
+        var rowID = $(this).attr('data-row-id');
+
+        // console.log(base_url);
+
+        // AJAX function to load the form data to display
+        $.ajax({
+            // AJAX Call options
+            url: base_url + '/admin/income/formIncrease',
+            type: "POST",
+            data: {
+                'rowID': rowID,
+            },
+            // On 'Success' Event
+            success: function(data) {
+
+                // Process only if any data has been loaded
+                if(data) {
+                    // Display the loaded data
+                    $(`#increaseForm #increaseFormContent`).html(data);
+                } // End if
+
+            }, // End success event
+
+        });
+
     });
-} ( jQuery ) )
+
+
+    /**
+    * PROCESS CLICK FORM
+    * On click on the 'submit' button
+    * 
+    * @param formData
+    * 
+    * @return toast
+    */
+    $(document).on("click", `#submitBTN`, function (e) {
+        // Cancel default event
+        e.preventDefault();
+        // Call insert function
+        initPostAjaxRequest();
+    });
+
+
+    // Function to post the form data to the server
+    let initPostAjaxRequest = () => {
+        // Get all the required data
+        var formElement = $('#increaseFormID'),
+            formData = new FormData(formElement[0]);
+
+        // AJAX Function to post the form data to database
+        $.ajax({
+        type: "POST",
+        url: base_url + 'admin/income/setIncrease',
+        processData: false,
+        contentType: false,
+        data: formData,
+
+        // On 'Success' Event
+        success: function(data) {
+            // Get the data value
+            let serverResponse = JSON.parse(data);
+            
+            // Check the response type
+            if(serverResponse.type === 'success')
+            {   // Dismiss the form modal
+                $(`#increaseForm`).modal("hide");
+
+                // Push the server response as toast
+                toastr.success(serverResponse.message);
+
+                // Reload the datatable
+                let incomeTable = $('.income-list').DataTable(); // Assurez-vous que la table utilise DataTables
+                incomeTable.ajax.reload(null, false); // Recharge les données sans réinitialiser la pagination
+
+                location.reload(true);
+            } // End if
+            else if(serverResponse.type === 'warning')
+            {
+                // Push the server response as toast
+                toastr.warning(serverResponse.message);
+            } // End else if
+            else
+            {   // Push the server response as toast
+                toastr.error(serverResponse.message);
+            } // End else
+
+        }, // End Success Event
+    });
+    }
+
 </script>

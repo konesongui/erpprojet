@@ -6,6 +6,8 @@ if (!defined('BASEPATH')) {
 
 class Income_model extends My_Model
 {
+    // Specify the table targeted
+	protected $ma_table = 'income';
 
     public function __construct()
     {
@@ -122,7 +124,7 @@ class Income_model extends My_Model
 
     public function get($id = null)
     {
-        $this->db->select('income.id,income.date,income.name,income.invoice_no,income.status,income.amount,income.documents,income.note,income_head.income_category,income.inc_head_id')->from('income');
+        $this->db->select('income.id,income.date,income.name,income.invoice_no,income.status,income.amount, income.amount_re, income.documents,income.note,income_head.income_category,income.inc_head_id')->from('income');
         $this->db->join('income_head', 'income.inc_head_id = income_head.id');
         if ($id != null) {
             $this->db->where('income.id', $id);
@@ -312,6 +314,13 @@ class Income_model extends My_Model
     {
         $query = 'SELECT sum(amount) as `amount` FROM `income` where date between ' . $this->db->escape($date_from) . ' and ' . $this->db->escape($date_to);
 
+        $query = $this->db->query($query);
+        return $query->row();
+    }
+
+
+    public function getTotalIncome(){
+        $query = 'SELECT sum(amount_re) as `amount` FROM `income`';
         $query = $this->db->query($query);
         return $query->row();
     }
