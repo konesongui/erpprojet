@@ -522,7 +522,6 @@ class Income extends Admin_Controller
         
         // Mise à jour de la ligne dans la base de données
         $rowUpdated = $this->income_model->updateP(['id' => $rowId], [
-            'amount'    => $newAmount,
             'amount_re' => $newAmountRe
         ]);
 
