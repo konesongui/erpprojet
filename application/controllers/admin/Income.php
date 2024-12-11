@@ -21,7 +21,7 @@ class Income extends Admin_Controller
         if (!$this->rbac->hasPrivilege('income', 'can_view')) {
             access_denied();
         }
-
+        
         $this->session->set_userdata('top_menu', 'Income');
         $this->session->set_userdata('sub_menu', 'income/index');
         $data['title']      = 'Add Income';
@@ -39,7 +39,7 @@ class Income extends Admin_Controller
                 'name'        => $this->input->post('name'),
                 'date'        => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
                 'amount'      => $this->input->post('amount'),
-                'amount_re'      => $this->input->post('amount_re'),
+                'amount_re'   => $this->input->post('amount'),
                 'invoice_no'  => $this->input->post('invoice_no'),
                 'note'        => $this->input->post('description'),
                 'documents'   => $this->input->post('documents'),
@@ -58,8 +58,15 @@ class Income extends Admin_Controller
             redirect('admin/income/index');
         }
 
+        
+        // $data['incomeTotal']  = $this->income_model->getTotalIncome();
+
+        // var_dump($data['incomeTotal']);
+        // exit;
+
         $income_result       = $this->income_model->get();
         $data['incomelist']  = $income_result;
+        $data['incomeTotal']  = $this->income_model->getTotalIncome();
         $incomeHead          = $this->incomehead_model->get();
         $data['incheadlist'] = $incomeHead;
         $this->load->view('layout/header', $data);
@@ -121,7 +128,8 @@ class Income extends Admin_Controller
     }
 
     public function create()
-    {
+    {   
+        // dd($this->input->post('income'));
         $data['title'] = 'Add Fees Master';
         $this->form_validation->set_rules('income', $this->lang->line('fees_master'), 'trim|required|xss_clean');
         if ($this->form_validation->run() == false) {
@@ -254,7 +262,6 @@ class Income extends Admin_Controller
 
     public function getincomelist()
     {
-
         $m               = $this->income_model->getincomelist();
         $m               = json_decode($m);
         $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
@@ -264,6 +271,7 @@ class Income extends Admin_Controller
                 $editbtn     = '';
                 $deletebtn   = '';
                 $documents   = '';
+                $increase    = '';
                 $inc_head_id = $value->inc_head_id;
                 $arr1        = str_split($inc_head_id);
 
@@ -285,6 +293,9 @@ class Income extends Admin_Controller
                     $document = "<a data-placement='left' href='" . base_url() . "admin/income/download/" . $value->documents . "' class='btn btn-default btn-xs'  data-toggle='tooltip' title='" . $this->lang->line('download') . "'>
                          <i class='fa fa-download'></i> </a>";
                 }
+
+                $increase = '<button data-toggle="modal" data-target="#increaseForm" data-row-id = "' . $value->id . '" data-toggle="tooltip" data-placement="left" title="Réapprovisionner" type="button" class="btn btn-sm alpha-primary text-primary-800 btn-icon increaseAount"><i class="fa fa-plus font-size-sm"></i></button>';
+
                 $row   = array();
                 $row[] = $title;
 
@@ -300,7 +311,7 @@ class Income extends Admin_Controller
                 $row[]     = $currency_symbol . $value->amount;
                 $row[]     = $currency_symbol . $value->amount_re;
                 $row[]     = $value->status;
-                $row[]     = $documents . ' ' . $editbtn . ' ' . $deletebtn;
+                $row[]     = $documents . ' ' . $editbtn . ' '. $increase .' '. $deletebtn;
                 $dt_data[] = $row;
             }
         }
@@ -437,6 +448,109 @@ class Income extends Admin_Controller
         );
         echo json_encode($json_data);
 
+    }
+
+
+    //-----------------------------------------------
+    // AFFICHER UN FORMULAIRE DE REAPPROVISIONNEMENT
+    //-----------------------------------------------
+    public function formIncrease()
+    {   
+        // Try to get any row's id sent
+        $data['rowID'] = ( ! empty($this->input->post('rowID')) && (int)$this->input->post('rowID') > 0) ? (int)$this->input->post('rowID') : 0;
+
+        // Load the form view with all the data required
+        $this->load->view('admin/income/increase_form', $data);
+        
+    } // End function
+    //--------------------------------------------------
+
+
+    //----------------------------------------
+    // UPDATE A BANK ENTRY IN THE DATABASE
+    //----------------------------------------
+    public function setIncrease()
+    {   
+        if (!$this->rbac->hasPrivilege('income', 'can_edit')) {
+            access_denied();
+        }
+        
+        // Récupération des données depuis les entrées POST
+        $rowId = $this->input->post('rowId') ? trim($this->input->post('rowId')) : 0;
+        $amount = $this->input->post('amount') ? floatval($this->input->post('amount')) : 0;
+        $reason = $this->input->post('reason') ? trim($this->input->post('reason')) : '';
+
+        // Vérification des champs obligatoires
+        if (empty($rowId) || empty($amount) || empty($reason)) {
+            $response = [
+                'type'    => 'danger',
+                'message' => 'Tous les champs marqués de ce symbole <code>*</code> sont obligatoires.',
+            ];
+            echo json_encode($response);
+            return;
+        }
+
+        // Execute the SQL query and store all the results
+        $oldRow = $this->db->select('*')
+            ->from('income')
+            ->where(['id' => $rowId])
+            ->get()
+            ->row();
+
+        if (!$oldRow) {
+            $response = [
+                'type'    => 'danger',
+                'message' => 'La ligne spécifiée est introuvable.',
+            ];
+            echo json_encode($response);
+            return;
+        }
+
+
+        // var_dump($oldRow);
+        // exit;
+
+        // Exemple de calculs avant la modification
+        $newAmount = (float)$oldRow->amount + (float)$amount; // Exemple : Ajouter le montant existant à celui fourni
+        $newAmountRe = (float)$oldRow->amount_re + (float)$amount; // Exemple : Ajouter le montant existant à celui fourni
+
+
+        // var_dump($newAmount);
+        // var_dump($newAmountRe);
+        // exit;
+
+        
+        // Mise à jour de la ligne dans la base de données
+        $rowUpdated = $this->income_model->updateP(['id' => $rowId], [
+            'amount'    => $newAmount,
+            'amount_re' => $newAmountRe
+        ]);
+
+        // var_dump($rowUpdated);
+        // exit;
+
+
+        if ($rowUpdated) {
+            // Mise à jour de la ligne dans la base de données
+            $this->Income_processing_model->createP([
+                'income_id' => $rowId,
+                'amount'    => $newAmount,
+                'reason'    => $reason
+            ]);
+            
+            $response = [
+                'type'    => 'success',
+                'message' => 'Le réapprovisionnement a été effectué avec succès.',
+            ];
+        } else {
+            $response = [
+                'type'    => 'warning',
+                'message' => 'Impossible de mettre à jour la ligne, une erreur est survenue.',
+            ];
+        }
+
+        // Réponse JSON
+        echo json_encode($response);
     }
 
 }

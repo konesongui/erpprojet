@@ -17,7 +17,7 @@
                     <!-- Horizontal Form -->
                     <div class="box box-primary">
                         <div class="box-header with-border">
-                            <h3 class="box-title"><?php echo $this->lang->line('add_expense'); ?></h3>
+                            <h3 class="box-title"><?php echo $this->lang->line('add_expense'); ?>  </h3>
                         </div><!-- /.box-header -->
                         <form id="form1" action="<?php echo base_url() ?>admin/expense"  id="employeeform" name="employeeform" method="post" accept-charset="utf-8" enctype="multipart/form-data">
                             <div class="box-body">
@@ -127,7 +127,7 @@
                 <!-- general form elements -->
                 <div class="box box-primary">
                     <div class="box-header ptbnull">
-                        <h3 class="box-title titlefix"><?php echo $this->lang->line('expense_list'); ?></h3>
+                        <h3 class="box-title titlefix"><?php echo $this->lang->line('expense_list'); ?> <b> ==> DEPENSE GENERALE : <?= number_format(floatval($expenseTotal->amount??0), 0, ',', ' ') ;?>  FCA </b></h3>
                         <div class="box-tools pull-right">
                         </div><!-- /.box-tools -->
                     </div><!-- /.box-header -->
@@ -147,6 +147,8 @@
                                             <th><?php echo $this->lang->line('date'); ?>
                                             </th>
                                             <th><?php echo $this->lang->line('expense_head'); ?>
+                                            </th>
+                                            <th>Caisse impactée
                                             </th>
                                             <th><?php echo $this->lang->line('amount'); ?>
                                             </th>

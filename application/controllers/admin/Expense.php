@@ -30,34 +30,74 @@ class Expense extends Admin_Controller
         $this->form_validation->set_rules('name', $this->lang->line('name'), 'trim|required|xss_clean');
         $this->form_validation->set_rules('date', $this->lang->line('date'), 'trim|required|xss_clean');
         $this->form_validation->set_rules('documents', $this->lang->line('documents'), 'callback_handle_upload');
+        
         if ($this->form_validation->run() == false) {
 
         } else {
-            $data = array(
-                'exp_head_id' => $this->input->post('exp_head_id'),
-                'inc_head_id' => $this->input->post('inc_head_id'),
-                'name'        => $this->input->post('name'),
-                'date'        => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
-                'amount'      => $this->input->post('amount'),
-                'invoice_no'  => $this->input->post('invoice_no'),
-                'note'        => $this->input->post('description'),
-            );
 
-            $insert_id = $this->expense_model->add($data);
+            $oldData = $this->income_model->read('*', ['id' => $this->input->post('inc_head_id')]);
+            $incomeAmountAvaible = (float)$oldData->amount_re??0 ;
+            $incomeId = (int)$this->input->post('inc_head_id')??0 ;
 
-            if (isset($_FILES["documents"]) && !empty($_FILES['documents']['name'])) {
-                $fileInfo = pathinfo($_FILES["documents"]["name"]);
-                $img_name = $insert_id . '.' . $fileInfo['extension'];
-                move_uploaded_file($_FILES["documents"]["tmp_name"], "./uploads/school_expense/" . $img_name);
-                $data_img = array('id' => $insert_id, 'documents' => 'uploads/school_expense/' . $img_name);
+            $amount = $this->input->post('amount') ? floatval($this->input->post('amount')) : 0;
 
-                $this->expense_model->add($data_img);
+            if($incomeAmountAvaible >= $amount){
+                $newIncomeAmountAvaible = $incomeAmountAvaible - $amount;
+
+                // var_dump($this->input->post('inc_head_id'));
+                // var_dump($old_data);
+                // var_dump($incomeAmountAvaible);
+                // var_dump($amount);
+                // exit;
+                
+                $data = array(
+                    'exp_head_id' => $this->input->post('exp_head_id'),
+                    'inc_head_id' => $this->input->post('inc_head_id'),
+                    'name'        => $this->input->post('name'),
+                    'date'        => date('Y-m-d', $this->customlib->datetostrtotime($this->input->post('date'))),
+                    'amount'      => $this->input->post('amount'),
+                    'invoice_no'  => $this->input->post('invoice_no'),
+                    'note'        => $this->input->post('description'),
+                );
+
+                $insert_id = $this->expense_model->add($data);
+
+                // Mise à jour de la ligne dans la base de données
+                $this->income_model->updateP(['id' => $incomeId], [
+                    'amount_re' => $newIncomeAmountAvaible
+                ]);
+
+                // Mise à jour de la ligne dans la base de données
+                $this->Income_processing_model->createP([
+                    'income_id' => $incomeId,
+                    'amount'    => -$amount,
+                    'reason'    => "Expense"
+                ]);
+
+                if (isset($_FILES["documents"]) && !empty($_FILES['documents']['name'])) {
+                    $fileInfo = pathinfo($_FILES["documents"]["name"]);
+                    $img_name = $insert_id . '.' . $fileInfo['extension'];
+                    move_uploaded_file($_FILES["documents"]["tmp_name"], "./uploads/school_expense/" . $img_name);
+                    $data_img = array('id' => $insert_id, 'documents' => 'uploads/school_expense/' . $img_name);
+
+                    $this->expense_model->add($data_img);
+                }
+
+                $this->session->set_flashdata('msg', '<div class="alert alert-success text-left">' . $this->lang->line('success_message') . '</div>');
+                redirect('admin/expense/index');
+            }else{
+                
+                $this->session->set_flashdata('msg', '<div class="alert alert-warning text-left">Le solde de la caisse sélectionnée est insuffisant</div>');
+                redirect('admin/expense/index');
             }
-
-            $this->session->set_flashdata('msg', '<div class="alert alert-success text-left">' . $this->lang->line('success_message') . '</div>');
-            redirect('admin/expense/index');
         }
+
+        // var_dump($this->input->post('amount'));
+        // exit;
+            
+
         $expense_result      = $this->expense_model->get();
+        $data['expenseTotal'] = $this->expense_model->getTotalExpense();
         $data['expenselist'] = $expense_result;
         $expnseHead          = $this->expensehead_model->get();
         $data['expheadlist'] = $expnseHead;
@@ -247,6 +287,10 @@ class Expense extends Admin_Controller
         $m       = $this->expense_model->getexpenselist();
         $m       = json_decode($m);
         $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
+
+        // var_dump($m);
+        // exit;
+
         $dt_data = array();
         if (!empty($m->data)) {
             foreach ($m->data as $key => $value) {
@@ -278,7 +322,8 @@ class Expense extends Admin_Controller
 
                 $row[]     = $value->invoice_no; 
                 $row[]     = date($this->customlib->getSchoolDateFormat(), $this->customlib->dateyyyymmddTodateformat($value->date));
-               $row[]     = $value->exp_category;
+                $row[]     = $value->exp_category;
+                $row[]     = $value->income_name;
                 $row[]     = $currency_symbol . $value->amount;
                 $row[]     = $documents.' ' .$editbtn . ' ' . $deletebtn;
                 $dt_data[] = $row;
@@ -293,15 +338,14 @@ class Expense extends Admin_Controller
         );
         echo json_encode($json_data);
     }
-
     /*-----------------function to check search validation for admission report ---*/
 
-   public function search()
+    public function search()
     {
         $button_type = $this->input->post('button_type');
 
         if ($button_type == "search_filter") {
-           
+        
             $this->form_validation->set_rules('search_type', $this->lang->line('search') . " " . $this->lang->line('type'), 'required|trim|xss_clean');
         } elseif ($button_type == "search_full") {
             
@@ -325,8 +369,8 @@ class Expense extends Admin_Controller
 
             $search_type = $this->input->post('search_type');
             if($search_type=='period'){
-              $date_from= $this->input->post('date_from');
-              $date_to= $this->input->post('date_to');  
+            $date_from= $this->input->post('date_from');
+            $date_to= $this->input->post('date_to');  
             }
             
             $params      = array('button_type' => $button_type, 'search_type'=>$search_type, 'search_text' => $search_text,'date_from' => $date_from, 'date_to' => $date_to);
