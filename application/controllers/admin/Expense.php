@@ -71,7 +71,8 @@ class Expense extends Admin_Controller
                 $this->Income_processing_model->createP([
                     'income_id' => $incomeId,
                     'amount'    => -$amount,
-                    'reason'    => "Expense"
+                    'reason'    => "Expense",
+                    'created_at'=> Date('Y-m-d')
                 ]);
 
                 if (isset($_FILES["documents"]) && !empty($_FILES['documents']['name'])) {

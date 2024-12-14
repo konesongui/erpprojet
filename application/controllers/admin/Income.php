@@ -272,6 +272,7 @@ class Income extends Admin_Controller
                 $deletebtn   = '';
                 $documents   = '';
                 $increase    = '';
+                $viewIncrease = '';
                 $inc_head_id = $value->inc_head_id;
                 $arr1        = str_split($inc_head_id);
 
@@ -294,7 +295,9 @@ class Income extends Admin_Controller
                          <i class='fa fa-download'></i> </a>";
                 }
 
-                $increase = '<button data-toggle="modal" data-target="#increaseForm" data-row-id = "' . $value->id . '" data-toggle="tooltip" data-placement="left" title="Réapprovisionner" type="button" class="btn btn-sm alpha-primary text-primary-800 btn-icon increaseAount"><i class="fa fa-plus font-size-sm"></i></button>';
+                $increase = '<a data-toggle="modal" data-target="#increaseForm" data-row-id = "' . $value->id . '" data-toggle="tooltip" data-placement="left" title="Réapprovisionner" type="button" class="btn btn-sm text-dark btn-icon increaseAmount"><i class="fa fa-plus text-dark font-size-sm"></i></a>';
+                
+                $viewIncrease = '<a data-toggle="modal" data-target="#viewIncreaseList" data-row-id = "' . $value->id . '" data-toggle="tooltip" data-placement="left" title="Liste réapprovisionnement" type="button" class="btn btn-sm text-dark btn-icon viewIncrease"><i class="fa fa-eye text-dark font-size-sm"></i></a>';
 
                 $row   = array();
                 $row[] = $title;
@@ -311,7 +314,7 @@ class Income extends Admin_Controller
                 $row[]     = $currency_symbol . $value->amount;
                 $row[]     = $currency_symbol . $value->amount_re;
                 $row[]     = $value->status;
-                $row[]     = $documents . ' ' . $editbtn . ' '. $increase .' '. $deletebtn;
+                $row[]     = $documents . ' ' . $editbtn . ' '. $increase.' '. $viewIncrease .' '. $deletebtn;
                 $dt_data[] = $row;
             }
         }
@@ -533,8 +536,9 @@ class Income extends Admin_Controller
             // Mise à jour de la ligne dans la base de données
             $this->Income_processing_model->createP([
                 'income_id' => $rowId,
-                'amount'    => $newAmount,
-                'reason'    => $reason
+                'amount'    => $amount,
+                'reason'    => $reason,
+                'created_at'=> Date('Y-m-d')
             ]);
             
             $response = [
@@ -551,5 +555,47 @@ class Income extends Admin_Controller
         // Réponse JSON
         echo json_encode($response);
     }
+
+
+    
+    //-----------------------------------------------
+    // AFFICHER UN FORMULAIRE DE REAPPROVISIONNEMENT
+    //-----------------------------------------------
+    public function listIncrease()
+    {   
+        // Try to get any row's id sent
+        $rowID = ( ! empty($this->input->post('rowID')) && (int)$this->input->post('rowID') > 0) ? (int)$this->input->post('rowID') : 0;
+
+        $join  = [
+            'table'     => 'income',
+            'condition' => 'income.id = income_processing.income_id',
+            'type'      => 'inner'
+        ];
+
+        // Définissez tous les champs à sélectionner dans la requête suivante
+        $select = 'income.name,  income_processing.id, income_processing.amount, income_processing.reason, income_processing.created_at';
+
+        // Définissez toutes les conditions de where en utilisant "AND" pour la requête suivante
+        $where  = [  
+            'income_id' => $rowID,
+        ];
+
+        // Exécutez la requête SQL et stockez tous les résultats
+        $data['rows'] = $this->db->select($select)
+            ->from('income_processing')
+            ->join($join['table'], $join['condition'], $join['type'])
+            ->where($where)
+            ->get()
+            ->result();
+        $this->db->flush_cache();
+        
+        // var_dump($rows);
+
+
+        // Load the form view with all the data required
+        $this->load->view('admin/income/increaseList', $data);
+        
+    } // End function
+    //--------------------------------------------------
 
 }

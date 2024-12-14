@@ -176,6 +176,15 @@ $language_name = $language["short_code"];
                     </div>
                 </div>
 
+                <!-- increase form modal -->
+                <div id="viewIncreaseList" class="modal fade" data-backdrop="false">
+                    <div class="modal-dialog">
+                        <div class="modal-content" id="ViewIncreaseContent">
+
+                        </div>
+                    </div>
+                </div>
+
             </div><!--/.col (left) -->
             <!-- right column -->
 
@@ -231,7 +240,7 @@ $language_name = $language["short_code"];
 
     
     // Function to load on (edit or add) button click
-    $(document).on('click', `.increaseAount`, function(e) {
+    $(document).on('click', `.increaseAmount`, function(e) {
 
         // Desable default event
         e.preventDefault();
@@ -324,8 +333,44 @@ $language_name = $language["short_code"];
                 toastr.error(serverResponse.message);
             } // End else
 
-        }, // End Success Event
-    });
+            }, // End Success Event
+        });
     }
+
+
+
+    // Function to load on (edit or add) button click
+    $(document).on('click', `.viewIncrease`, function(e) {
+
+        // Desable default event
+        e.preventDefault();
+
+        // Get the selected row id
+        var rowID = $(this).attr('data-row-id');
+
+        // console.log(base_url);
+
+        // AJAX function to load the form data to display
+        $.ajax({
+            // AJAX Call options
+            url: base_url + '/admin/income/listIncrease',
+            type: "POST",
+            data: {
+                'rowID': rowID,
+            },
+            // On 'Success' Event
+            success: function(data) {
+
+                // Process only if any data has been loaded
+                if(data) {
+                    // Display the loaded data
+                    $(`#viewIncreaseList #ViewIncreaseContent`).html(data);
+                } // End if
+
+            }, // End success event
+
+        });
+
+    });
 
 </script>
