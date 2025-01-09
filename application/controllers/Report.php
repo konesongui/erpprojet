@@ -2390,7 +2390,7 @@ class Report extends Admin_Controller
         echo json_encode($array);
     }
 
-    public function getincomelistbydt()
+    public function getincomelistbydt_OLd()
     {
         $search_type = $this->input->post('search_type');
         $date_from   = $this->input->post('date_from');
@@ -2419,6 +2419,7 @@ class Report extends Admin_Controller
             foreach ($incomeList->data as $key => $value) {
                 $grand_total += $value->amount;
 
+                
                 $row   = array();
                 $row[] = $value->name;
                 $row[] = $value->invoice_no;
@@ -2446,6 +2447,102 @@ class Report extends Admin_Controller
         echo json_encode($json_data);
 
     }
+
+    public function getincomelistbydt()
+    {
+        $search_type = $this->input->post('search_type');
+        $date_from   = $this->input->post('date_from');
+        $date_to     = $this->input->post('date_to');
+
+        if ($search_type == "") {
+            $dates               = $this->customlib->get_betweendate('this_year');
+            $data['search_type'] = '';
+        } else {
+            $dates               = $this->customlib->get_betweendate($_POST['search_type']);
+            $data['search_type'] = $_POST['search_type'];
+        }
+
+        $start_date = date('Y-m-d', strtotime($dates['from_date']));
+        $end_date   = date('Y-m-d', strtotime($dates['to_date']));
+
+        $data['label'] = date($this->customlib->getSchoolDateFormat(), strtotime($start_date)) . " " . $this->lang->line('to') . " " . date($this->customlib->getSchoolDateFormat(), strtotime($end_date));
+
+        // Récupérer la liste des revenus avec leurs réapprovisionnements
+        $incomeList = $this->income_model->getIncomeWithReappro($start_date, $end_date);
+
+        $currency_symbol = $this->customlib->getSchoolCurrencyFormat();
+        $dt_data         = array();
+        $grand_total     = 0;
+
+        // var_dump($incomeList);
+        // exit;
+
+        if (!empty($incomeList)) {
+            foreach ($incomeList as $income) {
+                $grand_total +=  $income['income']->amount;
+
+                // var_dump($income);
+                // var_dump($income['income']->name);
+                // exit;
+
+                // Ligne principale pour l'entrée de caisse
+                $row   = array();
+                
+                $row[] = "<b>" . mb_strtoupper($income['income']->name) . "</b>";
+                $row[] = $income['income']->invoice_no;
+                $row[] = $income['income']->income_category;
+                $row[] = date($this->customlib->getSchoolDateFormat(), strtotime($income['income']->date));
+                $row[] = "<b>" . $currency_symbol .' '. $income['income']->amount . "</b>" ;
+
+                $dt_data[] = $row;
+
+                // Ajouter les réapprovisionnements pour cette entrée
+                if (!empty($income['income_processing'])) {
+                    // var_dump($income);
+                    // var_dump($income['income_processing']);
+                    // exit;
+
+                    foreach ($income['income_processing'] as $reappro) {
+
+                        // var_dump($reappro);
+                        // exit;
+
+                        $reappro_row   = array();
+                        $reappro_row[] = "--> " . $reappro->reason; // Indentation pour différencier les réappros
+                        $reappro_row[] = $reappro->invoice_no;
+                        $reappro_row[] = "Réapprovisionnement";
+                        $reappro_row[] = date($this->customlib->getSchoolDateFormat(), strtotime($reappro->created_at));
+                        $reappro_row[] = $currency_symbol .' '. $reappro->amount;
+
+                        $dt_data[] = $reappro_row;
+                    }
+                }
+            }
+
+            // Ligne du total général
+            $footer_row   = array();
+            $footer_row[] = "";
+            $footer_row[] = "";
+            $footer_row[] = "";
+            $footer_row[] = "<b>" . mb_strtoupper($this->lang->line('grand_total')) . "</b>";
+            $footer_row[] = "<b>" . ($currency_symbol .' '. number_format($grand_total, 2, '.', '')) . "</b>";
+            $dt_data[]    = $footer_row;
+        }
+
+        // var_dump($dt_data);
+        // exit;
+        
+
+        $json_data = array(
+            "draw"            => intval($this->input->post('draw')),
+            "recordsTotal"    => count($incomeList),
+            "recordsFiltered" => count($incomeList),
+            "data"            => $dt_data,
+        );
+
+        echo json_encode($json_data);
+    }
+
 
     public function getexpenselistbydt()
     {

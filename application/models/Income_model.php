@@ -325,4 +325,59 @@ class Income_model extends My_Model
         return $query->row();
     }
 
+
+
+    public function getIncomeWithReappro($start_date, $end_date)
+    {
+        $this->db->select('income.*, income_head.income_category');
+        $this->db->from('income');
+        $this->db->join('income_head', 'income.inc_head_id = income_head.id');
+        $this->db->where('income.date >=', $start_date);
+        $this->db->where('income.date <=', $end_date);
+
+        $query = $this->db->get();
+        $incomes = array();
+
+        // Parcourez chaque revenu
+        foreach ($query->result() as $row) {
+            $incomeData = [
+                'income' => $row,
+                'income_processing' => [], // Initialise la liste des réapprovisionnements
+            ];
+
+            // var_dump($row->id);
+            
+            // Obtenez les réapprovisionnements pour cet ID
+            $reapprovisionnements = $this->getReapprovisionnements($row->id);
+
+            // Ajoutez les réapprovisionnements à cet income
+            foreach ($reapprovisionnements as $reappro) {
+                $incomeData['income_processing'][] = $reappro;
+            }
+
+            // Ajoutez l'entrée complète au tableau final
+            $incomes[] = $incomeData;
+        }
+
+        // exit;
+        
+        // var_dump($incomes);
+        // exit;
+
+        return $incomes;
+    }
+
+    public function getReapprovisionnements($incomeID)
+    {
+        $this->db->select('*');
+        $this->db->from('income_processing');
+        $this->db->where('income_id', $incomeID);
+        $this->db->where('amount >', 0); // Filtrer les montants positifs
+        $query = $this->db->get();
+        return $query->result();
+    }
+
+
+
+
 }
