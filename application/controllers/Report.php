@@ -2479,7 +2479,7 @@ class Report extends Admin_Controller
 
         if (!empty($incomeList)) {
             foreach ($incomeList as $income) {
-                $grand_total +=  $income['income']->amount;
+                $grand_total +=  $income['income']->amount_re;
 
                 // var_dump($income);
                 // var_dump($income['income']->name);
@@ -2492,7 +2492,7 @@ class Report extends Admin_Controller
                 $row[] = $income['income']->invoice_no;
                 $row[] = $income['income']->income_category;
                 $row[] = date($this->customlib->getSchoolDateFormat(), strtotime($income['income']->date));
-                $row[] = "<b>" . $currency_symbol .' '. $income['income']->amount . "</b>" ;
+                $row[] = "<b>" . $currency_symbol .' '. $income['income']->amount_re . "</b>" ;
 
                 $dt_data[] = $row;
 
@@ -2504,6 +2504,7 @@ class Report extends Admin_Controller
 
                     foreach ($income['income_processing'] as $reappro) {
 
+                        // $grand_total += $reappro->amount;
                         // var_dump($reappro);
                         // exit;
 
